@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 class Student(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    user = models.ForeignKey(User,related_name='owner',on_delete=models.CASCADE)
+    user = models.ForeignKey(User,related_name='students',on_delete=models.CASCADE)
    
     def __str__(self):
         return self.name
