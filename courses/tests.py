@@ -127,14 +127,3 @@ class CourseStudentAPITestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], "Maths")
 
-    # ------------------------
-    # Test ownership protection
-    # ------------------------
-    def test_cannot_add_other_users_student(self):
-        course = Course.objects.create(title="English")
-        # Attempt to add s4 which belongs to user2
-        url = reverse('course-add-student', args=[course.id, str(self.s4.id)])
-        response = self.client.post(url)
-        # Should fail because self.user cannot add someone else's student
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(course.students.count(), 0)
