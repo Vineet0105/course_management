@@ -1,98 +1,32 @@
-# from django.contrib.auth.models import User
-# from rest_framework.test import APITestCase
-# from django.urls import reverse
-# from .models import Student,Course
-# from rest_framework import status
-# class CourseTestCase(APITestCase):
-#     def setUp(self):
-#         self.user =  User.objects.create_user(username='vineet',password='123',email='vineet@gmail.com')
-#         login_url = reverse('token_obtain_pair')
-#         response  = self.client.post(login_url,{"username": "vineet", "password":"123"},format="json")
-#         self.token = response.data['access']
-#         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
-#         s1 = Student.objects.create(name="A", email="a@example.com", user=self.user)
-#         s2 = Student.objects.create(name="B", email="b@example.com", user=self.user)
-#         s3 = Student.objects.create(name="C", email="c@example.com", user=self.user)
-
-#     def test_student(self):
-#         url = reverse('student-list')
-#         data  = {
-#             "name": "Vineet",
-#             "email": "vineet@gmail.com"
-#             }
-        
-#         response = self.client.post(url,data,format='json')
-#         self.assertEqual(Student.objects.all().count(),4)
-#         self.assertEqual(Student.objects.last().name,"Vineet")
-#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-
-#     def test_course(self):
-#         url = reverse('student-list')
-#         data  = {
-#             "name": "Vineet",
-#             "email": "vineet@gmail.com"
-#             }
-        
-#         response = self.client.post(url,data,format='json')
-#         self.assertEqual(Student.objects.all().count(),4)
-
-#         url = reverse('course-list')
-#         data  ={
-#             "students": [1],
-#             "title": "Maths"
-#             }
-        
-#         response = self.client.post(url,data,format='json')
-#         self.assertEqual(Course.objects.all().count(),1)
-#         self.assertEqual(Course.objects.first().title,"Maths")
-#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-
-#     def test_add(self):
-#         url = reverse('course-list')
-#         data  ={
-#             "students": [1],
-#             "title": "Maths"
-#             }
-        
-#         response = self.client.post(url,data,format='json')
-#         url = reverse('course-add-student', args=[1, f"{self.s2.id},{self.s3.id}"])
-#         response = self.client.post(url)
-#         course = Course.objects.first()
-#         self.assertEqual(course.students.count(),3)
-
-
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from .models import Student, Course
 from rest_framework import status
 
-class CourseTestCase(APITestCase):
-    def setUp(self):
-        # Create a test user
-        self.user = User.objects.create_user(
-            username='vineet', password='123', email='vineet@gmail.com'
-        )
+class CourseStudentAPITestCase(APITestCase):
 
-        # Authenticate user via JWT
+    def setUp(self):
+        # Create two users
+        self.user1 = User.objects.create_user(username='vineet', password='123', email='vineet@gmail.com')
+        self.user2 = User.objects.create_user(username='john', password='123', email='john@gmail.com')
+
+        # Authenticate as user1
         login_url = reverse('token_obtain_pair')
-        response = self.client.post(
-            login_url,
-            {"username": "vineet", "password": "123"},
-            format="json"
-        )
+        response = self.client.post(login_url, {"username": "vineet", "password": "123"}, format="json")
         self.token = response.data['access']
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
-        # Create initial students and assign to self for later reference
-        self.s1 = Student.objects.create(name="A", email="a@example.com", user=self.user)
-        self.s2 = Student.objects.create(name="B", email="b@example.com", user=self.user)
-        self.s3 = Student.objects.create(name="C", email="c@example.com", user=self.user)
+        # Create initial students for user1
+        self.s1 = Student.objects.create(name="A", email="a@example.com", user=self.user1)
+        self.s2 = Student.objects.create(name="B", email="b@example.com", user=self.user1)
+        self.s3 = Student.objects.create(name="C", email="c@example.com", user=self.user1)
+
+        # Create a student for user2 (to test ownership)
+        self.s4 = Student.objects.create(name="D", email="d@example.com", user=self.user2)
 
     # ------------------------
-    # Test creating a new student
+    # Test creating a student
     # ------------------------
     def test_create_student(self):
         url = reverse('student-list')
@@ -100,7 +34,7 @@ class CourseTestCase(APITestCase):
         response = self.client.post(url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Student.objects.count(), 4)
+        self.assertEqual(Student.objects.count(), 5)
         self.assertEqual(Student.objects.last().name, "Vineet")
 
     # ------------------------
@@ -108,56 +42,99 @@ class CourseTestCase(APITestCase):
     # ------------------------
     def test_create_course(self):
         url = reverse('course-list')
-        data = {
-            "title": "Maths",
-            "students": [self.s1.id]  # Use object ID, not hardcoded
-        }
+        data = {"title": "Maths", "students": [self.s1.id]}
         response = self.client.post(url, data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Course.objects.count(), 1)
         course = Course.objects.first()
         self.assertEqual(course.title, "Maths")
-        self.assertIn(self.s1, course.students.all())  # Verify M2M link
+        self.assertIn(self.s1, course.students.all())
 
     # ------------------------
-    # Test adding multiple students using custom action
+    # Test adding multiple students
     # ------------------------
     def test_add_students_to_course(self):
-        # First, create a course
         course = Course.objects.create(title="Science")
-        course.students.add(self.s1)  # Initially one student
+        course.students.add(self.s1)
 
-        # Build URL for custom add-student action
         url = reverse('course-add-student', args=[course.id, f"{self.s2.id},{self.s3.id}"])
         response = self.client.post(url)
 
-        # Verify API response
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Verify that all three students are linked
         self.assertEqual(course.students.count(), 3)
         self.assertIn(self.s1, course.students.all())
         self.assertIn(self.s2, course.students.all())
         self.assertIn(self.s3, course.students.all())
 
     # ------------------------
-    # Test removing students using custom action
+    # Test removing students
     # ------------------------
     def test_remove_students_from_course(self):
-        # Create course with all three students
         course = Course.objects.create(title="History")
         course.students.set([self.s1, self.s2, self.s3])
 
-        # Build URL for custom remove-student action
         url = reverse('course-remove-student', args=[course.id, f"{self.s2.id},{self.s3.id}"])
         response = self.client.post(url)
 
-        # Verify API response
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Only s1 should remain
         self.assertEqual(course.students.count(), 1)
         self.assertIn(self.s1, course.students.all())
         self.assertNotIn(self.s2, course.students.all())
         self.assertNotIn(self.s3, course.students.all())
+
+    # ------------------------
+    # Test adding invalid student
+    # ------------------------
+    def test_add_invalid_student(self):
+        course = Course.objects.create(title="Physics")
+        invalid_id = 9999
+        url = reverse('course-add-student', args=[course.id, str(invalid_id)])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # ------------------------
+    # Test removing invalid student
+    # ------------------------
+    def test_remove_invalid_student(self):
+        course = Course.objects.create(title="Chemistry")
+        course.students.add(self.s1)
+        invalid_id = 9999
+        url = reverse('course-remove-student', args=[course.id, str(invalid_id)])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # ------------------------
+    # Test duplicate student add
+    # ------------------------
+    def test_duplicate_student_add(self):
+        course = Course.objects.create(title="Biology")
+        course.students.add(self.s1)
+        url = reverse('course-add-student', args=[course.id, str(self.s1.id)])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(course.students.count(), 1)  # M2M should remain unique
+
+    # ------------------------
+    # Test filtering courses by title
+    # ------------------------
+    def test_filter_courses_by_title(self):
+        c1 = Course.objects.create(title="Maths")
+        c2 = Course.objects.create(title="Physics")
+        url = reverse('course-list') + "?title=Maths"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['title'], "Maths")
+
+    # ------------------------
+    # Test ownership protection
+    # ------------------------
+    def test_cannot_add_other_users_student(self):
+        course = Course.objects.create(title="English")
+        # Attempt to add s4 which belongs to user2
+        url = reverse('course-add-student', args=[course.id, str(self.s4.id)])
+        response = self.client.post(url)
+        # Should fail because self.user cannot add someone else's student
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(course.students.count(), 0)
