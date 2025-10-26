@@ -33,8 +33,7 @@ class CourseViewset(ModelViewSet):
         ids = student_id.split(',')
         for i in ids:
             try:
-                Student.objects.filter(pk=i, user=request.user).first()
-                Student.objects.get(pk=i)
+                student = Student.objects.get(pk=i)
             except Student.DoesNotExist:
                 return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
