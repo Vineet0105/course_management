@@ -10,13 +10,16 @@ from rest_framework import status
 from django_filters.rest_framework import DjangoFilterBackend
 
 class StudentViewset(ModelViewSet):
-    queryset = Student.objects.all()
+    # queryset = Student.objects.all()
     serializer_class =  StudentSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
 
 
 class CourseViewset(ModelViewSet):
-    queryset = Course.objects.all()
     serializer_class =  CourseSerializer
+    queryset = Course.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_fields  = ['title']
 
@@ -30,7 +33,8 @@ class CourseViewset(ModelViewSet):
         ids = student_id.split(',')
         for i in ids:
             try:
-                student = Student.objects.get(pk=i)
+                Student.objects.filter(pk=i, user=request.user).first()
+                Student.objects.get(pk=i)
             except Student.DoesNotExist:
                 return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -43,7 +47,7 @@ class CourseViewset(ModelViewSet):
 
     @action(detail=True,methods=['post'],url_path='remove-student/(?P<student_id>[^/.]+)')
     def remove_student(self,request,pk,student_id):
-        course = Course.objects.get(pk=pk)
+        course = self.get_object()
         ids = student_id.split(',')
         for i in ids:
             try:
