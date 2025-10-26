@@ -29,6 +29,6 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('',include(router.urls)),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('register',RegisterAPIView.as_view())
+    path('register',RegisterAPIViews.as_view())
 
 ]
