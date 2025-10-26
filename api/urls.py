@@ -8,8 +8,8 @@ from rest_framework import permissions
 from accounts.views import *
 
 router = DefaultRouter()
-router.register('students',StudentViewset,basename='student')
-router.register('courses',CourseViewset,basename='course')
+router.register('students',StudentViewset,  basename='student')
+router.register('courses',CourseViewset, basename='course')
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -25,8 +25,8 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('token/refresh',TokenRefreshView.as_view()),
-    path('token',TokenObtainPairView.as_view()),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('',include(router.urls)),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('register',RegisterAPIView.as_view())
